@@ -193,3 +193,37 @@ def start():
     adjustSpeedBasic(sensors)        # adjust motors speed with PID
     time.sleep(sensorDelay)          # wait to next interaction
 
+#===========================================================
+#                NEW FUNCTION TO MOVIMENT
+#===========================================================
+def movecar(lspeed, rspeed):
+  # LIMITA OS VALORES DE VELOCIDADE ENTRE -1 E 1
+  lspeed = max(min(lspeed, 1.0), -1.0)
+  rspeed = max(min(rspeed, 1.0), -1.0)
+
+  # CONTROLE DO MOTOR ESQUERDO
+  if lspeed > 0:
+    lpwm = round(lspeed * 1023)
+    esquerda_p2.duty(lpwm)
+    esquerda_p1.duty(0)
+  elif lspeed < 0:
+    lpwm = round(-lspeed * 1023)
+    esquerda_p1.duty(lpwm)
+    esquerda_p2.duty(0)
+  else:
+    esquerda_p1.duty(0)
+    esquerda_p2.duty(0)
+
+  # CONTROLE DO MOTOR DIREITO
+  if rspeed > 0:
+    rpwm = round(rspeed * 1023)
+    direita_p2.duty(rpwm)
+    direita_p1.duty(0)
+  elif rspeed < 0:
+    rpwm = round(-rspeed * 1023)
+    direita_p1.duty(rpwm)
+    direita_p2.duty(0)
+  else:
+    direita_p1.duty(0)
+    direita_p2.duty(0)
+
