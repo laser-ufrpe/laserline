@@ -29,28 +29,23 @@ sensorDelay = 0.005    # time for wait between sensor read
 isBlack = 1            # Tape color
 blackValue = 3800      # Set What is Black (0-4095)
 
-speedPins = [22, 23]                        # set speed pins
-motorPins  = [21, 19, 18, 5]                # set motors pins
-sensorPins = [34, 35, 32, 33, 25, 26, 27]   # sensor pins
+motorPins  = newPins("pwm", [13, 14, 4, 27])                   # set motors pins
+sensorPins = newPins("pulldown", [21, 22, 19, 23, 5, 18, 17])  # sensor pins
 
 errorWeights = [0.0, 1.0, 1.0, 0.0, 0.0, 0.12, 0.17]
-  
-Stop = [0,0,0,0]                     # stop direction
-Front, Back = [0,1,1,0], [1,0,0,1]   # front and back directions
-Right, Left = [0,1,0,1], [1,0,1,0]   # right and left directions
 
-#===========================================================
+#=========================================================== 
 #                    SUPPORT FUNCTIONS
 #===========================================================
 @micropython.native
-def setPin(pin, val): Pin(pin, Pin.OUT).value(val)
+def setPin(pin, val): pin.value(val)
 @micropython.native
-def setPWM(pin, val): PWM(Pin(pin), freq=1000).duty(int(val*maxSpeed))
+def setPWM(pin, val): pin.duty(val)
 
 @micropython.native
-def getPin(pin): return Pin(pin, Pin.IN).value()
+def getPin(pin): return pin.value()
 @micropython.native
-def getADC(pin): return ADC(Pin(pin, Pin.IN), atten=ADC.ATTN_11DB).read()
+def getADC(pin): return pin.read()
 @micropython.native
 def inTape(val): return isBlack ^ (val<blackValue)
 
@@ -83,7 +78,6 @@ def curve(dir, speed, delay):
   mv(Front, [1,1], 1) 
   mv(dir, speed, delay)
   move(Stop)
-
 
 #===========================================================
 #                   ERROR LOOKUP TABLE
