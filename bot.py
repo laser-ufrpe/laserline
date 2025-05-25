@@ -21,10 +21,10 @@ def newPins(select, pins, freq=1000):
 #===========================================================
 #                  ENVIROMENT VARIABLES
 #=========================================================== 
-maxSpeed = 600         # Max PWM Speed (0-1023)
-lineSpeed = 0.5        # Max line Speed  = 50%
-curveSpeed = 1.0       # Max curve Speed = 100%
-sensorDelay = 0.005    # time for wait between sensor read
+maxSpeed = [950, 1023]   # Max PWM Speed (0-1023)
+LSpd = 0.5               # Line Speed
+CSpd = [-0.5, 0.45]       # Internal/External curve Speed
+sensorDelay = 0.005      # time for wait between sensor read
 #=========================================================== 
 isBlack = 1            # Tape color
 blackValue = 3800      # Set What is Black (0-4095)
@@ -171,29 +171,24 @@ def adjustSpeed(sensor):
 @micropython.native
 def adjustSpeedBasic(sensor):
   if sensor not in failList:
-    error = errorLookup[sensor]      # get error value
+    error = errorLookup[sensor]   # get error value
     if error == 0:
-      setSpeed(lineSpeed,lineSpeed)
-      move(Front)
-    if error != 0:
-      setSpeed(curveSpeed,curveSpeed)
+      move(LSpd, LSpd)          # move to front
     if error < -0.09:
-      move(Left)
+      move(CSpd[0], CSpd[1])      # move to left
     if error > +0.09:
-      move(Right)
+      move(CSpd[1], CSpd[0]) # move to right
 
 #===========================================================
 #                      LOOP FUNCTION
 #===========================================================
 @micropython.native
 def start():
-  move(Front)
-  setSpeed(1.0, 1.0) # full speed
+  move(LSpd,LSpd)
   time.sleep(0.15)
 
   while True:
-    sensors = getSensorADC()         # get 7 sensor values
-    sensors = toDigital(sensors)     # convert to digital
+    sensors = getSensorDig()         # get 7 sensor values
     sensors = handlerFail(sensors)   # handler read problems
     adjustSpeedBasic(sensors)        # adjust motors speed with PID
     time.sleep(sensorDelay)          # wait to next interaction
