@@ -2,7 +2,21 @@
 #                       SETUP CODE
 #===========================================================
 import time
-from machine import Pin, ADC, PWM 
+from machine import Pin, ADC, PWM
+# bot.LSpd, bot.CSpd = 0.5, [-0.5, 0.7]; bot.start()
+#===========================================================
+def newPins(select, pins, freq=1000):
+  pinList = []
+  for pinNumber in pins:
+    if (select == "in"): pin = Pin(pinNumber, Pin.IN)
+    if (select == "out"): pin = Pin(pinNumber, Pin.OUT)
+    if (select == "pwm"): pin = PWM(Pin(pinNumber), freq=freq)
+    if (select == "adc"): pin = ADC(Pin(pinNumber, Pin.IN), atten=ADC.ATTN_11DB)
+    if (select == "pullup"): pin = Pin(pinNumber, Pin.IN, Pin.PULL_UP)
+    if (select == "pulldown"): pin = Pin(pinNumber, Pin.IN, Pin.PULL_DOWN)
+
+    pinList.append(pin)
+  return pinList
 
 #===========================================================
 #                  ENVIROMENT VARIABLES
