@@ -94,17 +94,14 @@ errorLookup = {
   0b_0000001: +errorWeights[6],  # right 6
 }
 #===========================================================
-#                   MOVIMENT FUNCTIONS
+#                   MOVEMENT FUNCTIONS
 #===========================================================
 @micropython.native
-def move(dir):
-  for i in range(4):
-    setPin(motorPins[i], dir[i])
-
-@micropython.native
-def setSpeed(left, right):
-  setPWM(speedPins[0], left)
-  setPWM(speedPins[1], right)
+def move(lspeed, rspeed):
+  setPWM(motorPins[0], int(-(lspeed<0)*lspeed*maxSpeed[0])) # left-back    
+  setPWM(motorPins[1], int( (lspeed>0)*lspeed*maxSpeed[0])) # left-front
+  setPWM(motorPins[2], int(-(rspeed<0)*rspeed*maxSpeed[1])) # right-back
+  setPWM(motorPins[3], int( (rspeed>0)*rspeed*maxSpeed[1])) # right-front
 
 #===========================================================
 #                   SENSORS FUNCTIONS
@@ -192,38 +189,4 @@ def start():
     sensors = handlerFail(sensors)   # handler read problems
     adjustSpeedBasic(sensors)        # adjust motors speed with PID
     time.sleep(sensorDelay)          # wait to next interaction
-
-#===========================================================
-#                NEW FUNCTION TO MOVIMENT
-#===========================================================
-def movecar(lspeed, rspeed):
-  # LIMITA OS VALORES DE VELOCIDADE ENTRE -1 E 1
-  lspeed = max(min(lspeed, 1.0), -1.0)
-  rspeed = max(min(rspeed, 1.0), -1.0)
-
-  # CONTROLE DO MOTOR ESQUERDO
-  if lspeed > 0:
-    lpwm = round(lspeed * 1023)
-    esquerda_p2.duty(lpwm)
-    esquerda_p1.duty(0)
-  elif lspeed < 0:
-    lpwm = round(-lspeed * 1023)
-    esquerda_p1.duty(lpwm)
-    esquerda_p2.duty(0)
-  else:
-    esquerda_p1.duty(0)
-    esquerda_p2.duty(0)
-
-  # CONTROLE DO MOTOR DIREITO
-  if rspeed > 0:
-    rpwm = round(rspeed * 1023)
-    direita_p2.duty(rpwm)
-    direita_p1.duty(0)
-  elif rspeed < 0:
-    rpwm = round(-rspeed * 1023)
-    direita_p1.duty(rpwm)
-    direita_p2.duty(0)
-  else:
-    direita_p1.duty(0)
-    direita_p2.duty(0)
 
