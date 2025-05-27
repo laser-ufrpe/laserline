@@ -3,6 +3,8 @@
 #===========================================================
 import time
 from machine import Pin, ADC, PWM
+from pid_controller import PIDController
+
 # bot.LSpd, bot.CSpd = 0.5, [-0.5, 0.7]; bot.start()
 #===========================================================
 def newPins(select, pins, freq=1000):
@@ -32,7 +34,10 @@ blackValue = 3800      # Set What is Black (0-4095)
 motorPins  = newPins("pwm", [13, 14, 4, 27])                   # set motors pins
 sensorPins = newPins("pulldown", [21, 22, 19, 23, 5, 18, 17])  # sensor pins
 
-errorWeights = [0.0, 1.0, 1.0, 0.0, 0.0, 0.12, 0.17]
+errorWeights = [0.0, 0.3, 0.5, 0.7, 0.10, 0.12, 0.17]
+
+
+pid = PIDController(p=1.2,i=0.0,d=0.1)
 
 #=========================================================== 
 #                    SUPPORT FUNCTIONS
@@ -179,17 +184,30 @@ def adjustSpeedBasic(sensor):
     if error > +0.09:
       move(CSpd[1], CSpd[0]) # move to right
 
+@micropython.native
+def adjustSpeedPID(sensor):
+  if sensor not in failList:
+    error = errorLookup[sensor]               # get error value
+    correction = pid.compute(error)           # calculate PID correction
+    left = LSpd + correction                  # reduce left if turning right
+    right = LSpd - correction                 # increase right if turning right
+    left = min(max(left, 0), 1)               # clamp between 0-1
+    right = min(max(right, 0), 1)
+    correction = pid.compute(error)
+    correction = max(min(correction, 0.5), -0.5)  # Limite de saída
+    move(left, right)                         # set adjusted speeds
+
 #===========================================================
 #                      LOOP FUNCTION
 #===========================================================
 @micropython.native
 def start():
-  move(LSpd,LSpd)
-  time.sleep(0.15)
-
   while True:
     sensors = getSensorDig()         # get 7 sensor values
     sensors = handlerFail(sensors)   # handler read problems
-    adjustSpeedBasic(sensors)        # adjust motors speed with PID
-    time.sleep(sensorDelay)          # wait to next interaction
+    adjustSpeedPID(sensors)          # adjust motors speed with PID
+    time.sleep(sensorDelay)          # wait to next interaction
 
+move(LSpd,LSpd)
+time.sleep(0.15)
+start()
