@@ -1,35 +1,22 @@
-#===========================================================
-#                     PID CONTROLLER 
-#===========================================================
-import time 
-
-class PIDController:
-    def __init__(self, p=1.0, i=0.0, d=0.0):
-        self.kp = p 
-        self.ki = i
-        self.kd = d 
-        self.lstError = 0.0
-        self.integral = 0.0
-        self.lstTime = time.ticks_ms()
+class PID:
+    def __init__(self, p, i, d):
+        self.reset()
+        self.conf(p, i, d)
 
     def reset(self):
-        self.prevError = 0.0
-        self.integral = 0.0
-        self.lstTime = time.ticks_ms()
+        self.last = 0
+        self.hist = 0
 
-    def compute(self, error:float) -> float:
-        currentTime = time.ticks_ms()
-        deltaTime = time.ticks_diff(currentTime, self.lstTime) / 1000.0
+    def conf(self, kp, ki, kd):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
 
-        self.integral += error * deltaTime
-        derivative = (error - self.lstError) / deltaTime if deltaTime > 0 else 0.0 
-      
-        output:tuple = ( 
-            self.kp * error +
-            self.ki * self.integral +
-            self.kd * derivative
-        )
-        self.lstError = error
-        self.lstTime = currentTime
-        
-        return output
+    def calc(self, err):
+        self.hist += err
+        p = self.kp * err
+        i = self.ki * self.hist
+        d = self.kd * (err - self.last)
+        self.last = err
+        return p+i+d
+
