@@ -2,79 +2,59 @@
 #                       SETUP CODE
 #===========================================================
 import time
-from machine import Pin, ADC, PWM
-from pid_controller import PIDController
-
-# bot.LSpd, bot.CSpd = 0.5, [-0.5, 0.7]; bot.start()
-#===========================================================
-def newPins(select, pins, freq=1000):
-  pinList = []
-  for pinNumber in pins:
-    if (select == "in"): pin = Pin(pinNumber, Pin.IN)
-    if (select == "out"): pin = Pin(pinNumber, Pin.OUT)
-    if (select == "pwm"): pin = PWM(Pin(pinNumber), freq=freq)
-    if (select == "adc"): pin = ADC(Pin(pinNumber, Pin.IN), atten=ADC.ATTN_11DB)
-    if (select == "pullup"): pin = Pin(pinNumber, Pin.IN, Pin.PULL_UP)
-    if (select == "pulldown"): pin = Pin(pinNumber, Pin.IN, Pin.PULL_DOWN)
-
-    pinList.append(pin)
-  return pinList
-
+from controller.pin import PIN
+from controller.bot import BOT
+from controller.pid import PID
+ 
 #===========================================================
 #                  ENVIROMENT VARIABLES
 #=========================================================== 
-maxSpeed = [950, 1023]   # Max PWM Speed (0-1023)
-LSpd = 0.5               # Line Speed
-CSpd = [-0.5, 0.45]       # Internal/External curve Speed
-sensorDelay = 0.005      # time for wait between sensor read
+pin = PIN()
+pid = PID(1.2, 0.0, 0)
+bot = BOT(1023, 1023)
+
+whiteValue = 4070
+weights = [0.000, 0.069, 0.100, 0.207, 0.258, 0.317, 0.382]
+
+bot.setDelay(0.001)
+bot.limit(-1,1)
+bot.baseSpd(0.6, 0.6)
+
+pid.limit(-1,1)
+bot.curveErr(0.9)
+bot.curveSpd(-0.5, 0.45)
+
 #=========================================================== 
-isBlack = 1            # Tape color
-blackValue = 3800      # Set What is Black (0-4095)
+btn = pin.new("in", 15)
+btn_gnd = pin.new("pullup", 2)
 
-motorPins  = newPins("pwm", [13, 14, 4, 27])                   # set motors pins
-sensorPins = newPins("pulldown", [21, 22, 19, 23, 5, 18, 17])  # sensor pins
-
-errorWeights = [0.0, 0.3, 0.5, 0.7, 0.10, 0.12, 0.17]
-
-
-pid = PIDController(p=1.2,i=0.0,d=0.1)
-
-#=========================================================== 
-#                    SUPPORT FUNCTIONS
-#===========================================================
-@micropython.native
-def setPin(pin, val): pin.value(val)
-@micropython.native
-def setPWM(pin, val): pin.duty(val)
-
-@micropython.native
-def getPin(pin): return pin.value()
-@micropython.native
-def getADC(pin): return pin.read()
-@micropython.native
-def inTape(val): return isBlack ^ (val<blackValue)
+motorPins  = pin.arr("pwm", [21, 19, 18, 5])             # set motors pins
+sensorPins = pin.arr("adc", [34,35,32,33, 25,26,27,14])  # sensor pins
 
 #===========================================================
 #                   DEBUG FUNCTIONS
 #===========================================================
 def debugSensorDig():
   while True:
-    sensors = getSensorDig();         print(f'read: {sensors:07b}')
-    sensors = handlerFail(sensors);   print(f'fixed: {sensors:07b}\n')
+    sensors = getSensorDig();         print(f'read: {sensors:08b}')
+    sensors = handleFail(sensors);   print(f'fixed: {sensors:08b}\n')
     time.sleep(1)
 
 def debugSensorADC():
   while True:
-    sensors = getSensorADC();        print(f'read: {sensors}')
-    sensors = toDigital(sensors);    print(f'conv: {sensors:07b}')
-    sensors = handlerFail(sensors);  print(f'fixed: {sensors:07b}\n')
+    sensors = getSensorADC();                print(f'read: {sensors}')
+    sensors = toDigital(sensors);            print(f'conv: {sensors:08b}')
+    sensors = handleColor(sensors);          print(f'color: {sensors:08b}')
+    sensors = handleFail(sensors);           print(f'fixed: {sensors:08b}\n')
+
+    adjust = adjustSpeedPID(sensors);
+    print(f'pid: {adjust[2]}\n left: {adjust[0]}\n right: {adjust[1]}\n')
     time.sleep(1)
 
 #=========================================================== 
 @micropython.native
-def mv(dir, speed, delay):
-  move(dir)
-  setSpeed(speed[0], speed[1])
+def mv(lspeed, rspeed, delay):
+  move(lspeed, rspeed)
   time.sleep(delay)
 
 @micropython.native
@@ -87,60 +67,71 @@ def curve(dir, speed, delay):
 #===========================================================
 #                   ERROR LOOKUP TABLE
 #===========================================================
-failList = [ 0, 0b_1111111 ]
+failList = [ 0, 0b_11111111 ]
 
 errorLookup = {
-  0b_1000000: -errorWeights[6],  # left 6
-  0b_1100000: -errorWeights[5],  # left 5
-  0b_1110000: -errorWeights[4],  # left 4
-  0b_0111000: -errorWeights[3],  # left 3
-  
-  0b_0011111: -errorWeights[2],  # left 2 internal
-  0b_0011110: -errorWeights[1],  # left 1 internal
-  0b_0011100:  errorWeights[0],  # center
-  0b_0111100: +errorWeights[1],  # right 1 internal
-  0b_1111100: +errorWeights[2],  # right 2 internal
-  
-  0b_0001110: +errorWeights[3],  # right 3
-  0b_0000111: +errorWeights[4],  # right 4
-  0b_0000011: +errorWeights[5],  # right 5
-  0b_0000001: +errorWeights[6],  # right 6
+  0b_10000000: -weights[6],  # left 6
+  0b_11000000: -weights[5],  # left 5
+  0b_01000000: -weights[4],  # left 4
+  0b_01100000: -weights[3],  # left 3
+  0b_00100000: -weights[2],  # left 2
+  0b_00010000: -weights[1],  # left 1
+
+  0b_00011000:  weights[0],  # center
+
+  0b_00001000: +weights[1],  # right 1
+  0b_00000100: +weights[2],  # right 2
+  0b_00000110: +weights[3],  # right 3
+  0b_00000010: +weights[4],  # right 4
+  0b_00000011: +weights[5],  # right 5
+  0b_00000001: +weights[6],  # right 6
 }
 #===========================================================
 #                   MOVEMENT FUNCTIONS
 #===========================================================
 @micropython.native
 def move(lspeed, rspeed):
-  setPWM(motorPins[0], int(-(lspeed<0)*lspeed*maxSpeed[0])) # left-back    
-  setPWM(motorPins[1], int( (lspeed>0)*lspeed*maxSpeed[0])) # left-front
-  setPWM(motorPins[2], int(-(rspeed<0)*rspeed*maxSpeed[1])) # right-back
-  setPWM(motorPins[3], int( (rspeed>0)*rspeed*maxSpeed[1])) # right-front
+  pin.pwm(motorPins[0], int(-(lspeed<0)*lspeed*bot.LPwm)) # left-back    
+  pin.pwm(motorPins[1], int( (lspeed>0)*lspeed*bot.LPwm)) # left-front
+  pin.pwm(motorPins[2], int(-(rspeed<0)*rspeed*bot.RPwm)) # right-back
+  pin.pwm(motorPins[3], int( (rspeed>0)*rspeed*bot.RPwm)) # right-front
 
 #===========================================================
 #                   SENSORS FUNCTIONS
 #===========================================================
+@micropython.native
+def inTape(val): return (val>whiteValue)
+@micropython.native
+def tapeColor(sensors): return sensors^(isWhite*255)
+
+@micropython.native
+def handleColor(sensorsRead):
+  return (255*(sensorsRead>255) ^ sensorsRead) & 255
+
 def getSensorDig():
   sum = 0
-  for pin in sensorPins:
-    sum = (sum<<1) + getPin(pin)
+  for SelectedPin in sensorPins:
+    sum = (sum<<1) + pin.get(SelectedPin)
   return sum
 
 @micropython.native
 def getSensorADC():
-  sensorArr = []
-  for pin in sensorPins:
-    sensorVal = getADC(pin)
-    sensorArr.append(sensorVal)
-  return sensorArr
+  sensorsADC = []
+  for SelectedPin in sensorPins:
+    sensorVal = pin.adc(SelectedPin)
+    sensorsADC.append(sensorVal)
+  return sensorsADC
 
 @micropython.native
-def toDigital(sensorArr):
-  sum = 0
-  for val in sensorArr:
+def toDigital(sensorsADC):
+  sum, bitCount = 0, 0
+  for val in sensorsADC:
+    bitCount += inTape(val)
     sum = (sum<<1) + inTape(val)
-  return sum
+  return sum + ((bitCount>4)<<8)
+
 #===========================================================
-#                  SENSOR FAIL HANDLER
+#                  SENSOR FAIL handle
 #===========================================================
 @micropython.native
 def sortMoreBit(bit, list):
@@ -155,7 +146,7 @@ def bitEquality(a, b):
 sortedErrMap = sortMoreBit('1', errorLookup.keys())
 
 @micropython.native
-def handlerFail(sensor):
+def handleFail(sensor):
   if sensor in failList + list(errorLookup):
     return sensor
 
@@ -178,36 +169,64 @@ def adjustSpeedBasic(sensor):
   if sensor not in failList:
     error = errorLookup[sensor]   # get error value
     if error == 0:
-      move(LSpd, LSpd)          # move to front
-    if error < -0.09:
-      move(CSpd[0], CSpd[1])      # move to left
-    if error > +0.09:
-      move(CSpd[1], CSpd[0]) # move to right
+      move(bot.BaseLSpeed, bot.BaseLSpeed)   # move to front
+    if error < -bot.CurveErr:
+      move(bot.CurveISpeed, bot.CurveESpeed) # move to left
+    if error > +bot.CurveErr:
+      move(bot.CurveESpeed, bot.CurveISpeed) # move to right
 
 @micropython.native
 def adjustSpeedPID(sensor):
   if sensor not in failList:
     error = errorLookup[sensor]               # get error value
-    correction = pid.compute(error)           # calculate PID correction
-    left = LSpd + correction                  # reduce left if turning right
-    right = LSpd - correction                 # increase right if turning right
-    left = min(max(left, 0), 1)               # clamp between 0-1
-    right = min(max(right, 0), 1)
-    correction = pid.compute(error)
-    correction = max(min(correction, 0.5), -0.5)  # Limite de saída
-    move(left, right)                         # set adjusted speeds
+  else:
+    error = pid.prev
+
+  correction = pid.calc(error)              # calculate PID correction
+  left = bot.BaseLSpeed + correction        # reduce left if turning right
+  right = bot.BaseRSpeed - correction       # increase right if turning right
+  left = min(max(left, bot.min), bot.max)
+  right = min(max(right, bot.min), bot.max)
+  return [left, right, correction]
 
 #===========================================================
 #                      LOOP FUNCTION
 #===========================================================
-@micropython.native
-def start():
-  while True:
-    sensors = getSensorDig()         # get 7 sensor values
-    sensors = handlerFail(sensors)   # handler read problems
-    adjustSpeedPID(sensors)          # adjust motors speed with PID
-    time.sleep(sensorDelay)          # wait to next interaction
+def setup(delay, Spd, pidlim, selectpid):
+  pid.reset()
+  pid.conf(selectpid[0], selectpid[1], selectpid[2])
+  bot.setDelay(delay)
+  bot.limit(Spd[1],Spd[2])
+  bot.baseSpd(Spd[0], Spd[0])
+  pid.limit(pidlim[0], pidlim[1])
 
-move(LSpd,LSpd)
-time.sleep(0.15)
-start()
+@micropython.native
+def start(delay, Spd, pidlim, selectpid):
+  setup(delay, Spd, pidlim, selectpid)
+  while pin.get(btn) != 0:
+    time.sleep(0.001)
+  time.sleep(0.3)
+  mv(0.6,0.6, 0.15)
+
+  while True:
+    sensors = getSensorADC()          # get 7 sensor values
+    sensors = toDigital(sensors)      # get 7 sensor values
+    sensors = handleColor(sensors)             # handle color
+    sensors = handleFail(sensors)              # handle read problems
+    adjust = adjustSpeedPID(sensors)           # adjust motors speed with PID
+    
+    move(adjust[0], adjust[1])
+    time.sleep(bot.delay)                       # wait to next interaction
+    if pin.get(btn) == 0:
+      time.sleep(0.2)
+      move(0,0)
+      time.sleep(0.2)
+      print("HEI, I STOP HERE!!!")
+      return 0
+
+    print(f'{sensors:08b}', pid.prev, adjust)
+
+#===========================================================
+# setup(weights, delay, [mid, min, max], [pidmin, pidmax], [kp, ki, kd])
+#===========================================================
+start(0.005, [0.7, -0.3, 0.7], [-1, 1], [2.6, 0.005, 2])
