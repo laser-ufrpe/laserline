@@ -21,3 +21,22 @@ class PIN:
   @micropython.native
   def adc(self, pin): return pin.read()
 
+#===========================================================
+  def arr(self, mode, pins, freq=1000):
+    PinList = []
+    for pinNumber in pins:
+      pin = self.new(mode, pinNumber, freq)
+      PinList.append(pin)
+    return PinList
+
+  def new(self, mode, pinNumber, freq=1000):
+    PinModes = {
+      "in":       lambda: Pin(pinNumber, Pin.IN),
+      "out":      lambda: Pin(pinNumber, Pin.OUT),
+      "pwm":      lambda: PWM(Pin(pinNumber), freq=freq),
+      "adc":      lambda: ADC(Pin(pinNumber, Pin.IN), atten=ADC.ATTN_11DB),
+      "pullup":   lambda: Pin(pinNumber, Pin.IN, Pin.PULL_UP),
+      "pulldown": lambda: Pin(pinNumber, Pin.IN, Pin.PULL_DOWN),
+    }
+    return PinModes[mode]()
+
