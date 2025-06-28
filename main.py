@@ -5,7 +5,7 @@ import time
 from controller.pin import PIN
 from controller.bot import BOT
 from controller.pid import PID
- 
+# 3 5 1 6 2 8 4 7
 #===========================================================
 #                  ENVIROMENT VARIABLES
 #=========================================================== 
@@ -23,12 +23,23 @@ bot.baseSpd(0.6, 0.6)
 pid.limit(-1,1)
 bot.curveErr(0.9)
 bot.curveSpd(-0.5, 0.45)
+#=========================================================== 
+#                TEST MUX WITH 16 SENSORS
+#=========================================================== 
+muxIn=pin.arr("adc", [32,33])
+muxOut=pin.arr("out", [25,26,27])
 
+def testMux(bit1, bit2, bit3):
+  pin.new("out", 25).value(bit1)
+  pin.new("out", 26).value(bit2)
+  pin.new("out", 27).value(bit3)
+
+  print(pin.adc(IN[0]), pin.adc(IN[1]))
 #=========================================================== 
 btn = pin.new("in", 15)
 btn_gnd = pin.new("pullup", 2)
 
-motorPins  = pin.arr("pwm", [21, 19, 18, 5])             # set motors pins
+motorPins  = pin.arr("pwm", [16, 17, 13, 12])            # set motors pins
 sensorPins = pin.arr("adc", [34,35,32,33, 25,26,27,14])  # sensor pins
 
 #===========================================================
@@ -106,7 +117,7 @@ def tapeColor(sensors): return sensors^(isWhite*255)
 
 @micropython.native
 def handleColor(sensorsRead):
-  return (255*(sensorsRead>255) ^ sensorsRead) & 255
+  return 511*(sensorsRead>255) ^ sensorsRead
 
 def getSensorDig():
   sum = 0
@@ -199,6 +210,7 @@ def setup(delay, Spd, pidlim, selectpid):
   bot.limit(Spd[1],Spd[2])
   bot.baseSpd(Spd[0], Spd[0])
   pid.limit(pidlim[0], pidlim[1])
+  
 
 @micropython.native
 def start(delay, Spd, pidlim, selectpid):

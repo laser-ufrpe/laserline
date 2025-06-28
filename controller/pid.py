@@ -26,5 +26,4 @@ class PID:
     i = self.ki * self.hist
     d = self.kd * (err - self.prev)
     self.prev = err
-    return min(max(p+i+d, self.min), self.max)
-
+    return min(max(p+i+d, self.min), self.max) 

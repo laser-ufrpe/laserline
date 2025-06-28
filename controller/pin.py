@@ -29,7 +29,7 @@ class PIN:
       PinList.append(pin)
     return PinList
 
-  def new(self, mode, pinNumber, freq=1000):
+  def new(self, mode, pinNumber, freq=20000):
     PinModes = {
       "in":       lambda: Pin(pinNumber, Pin.IN),
       "out":      lambda: Pin(pinNumber, Pin.OUT),
