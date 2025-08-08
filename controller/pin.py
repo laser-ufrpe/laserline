@@ -1,6 +1,7 @@
 #===========================================================
 #                      PINS CONTROLLER
 #===========================================================
+import micropython 
 from machine import Pin, ADC, PWM
 
 class PIN:
@@ -39,4 +40,3 @@ class PIN:
       "pulldown": lambda: Pin(pinNumber, Pin.IN, Pin.PULL_DOWN),
     }
     return PinModes[mode]()
-

@@ -5,4 +5,4 @@ import machine
 import ble_repl
     
 ble_repl.start()
-machine.freq(240000000)
+machine.freq(80_000_000)
