@@ -45,37 +45,3 @@ void pin32::high(int bitmask) {
 void pin32::low(int bitmask) {
   REG_WRITE(GPIO_OUT_W1TC_REG, bitmask);  // GPIO_OUT_W1TC_REG
 }
-
-
-pin32 pin32;
-
-// Function sensor32
-
-int muxIn[] = { 36, 39 };                   //  change to ADC
-int muxSeq[] = { 5, 7, 6, 4, 3, 0, 1, 2 };  // CD4051 (pinout)
-int muxMask = 16;                           // muxPin = [16,17,18]
-int buffer[16] = { 0 };
-
-void sensor32(int buffer[]){
-  for (int i = 0; i < 8; i++) {
-    pin32.low(0b111 << int(muxMask));
-    pin32.high(muxSeq[i] << muxMask);
-    buffer[i] = analogRead(muxIn[0]);
-    buffer[i + 8] = analogRead(muxIn[1]);
-  }
-}
-
-void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(115200);
-  Serial.println("Teste Serial");
-
-  pin32.output(PINS_MASK);
-}
-
-void loop() {
-  pin32.high(PINS_MASK);
-  delay(200);
-  pin32.low(PINS_MASK);
-  delay(200);
-}

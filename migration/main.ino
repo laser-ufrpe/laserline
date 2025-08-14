@@ -1,12 +1,15 @@
 #include <Arduino.h>
 #include <ESP32PWM.h>
+#include "pins32.ino"
 
 // ====================== DEFINIÇÕES ======================
 const int motorPins[] = {27, 4, 13, 14};
 const int muxIn[] = {36, 39};       // Pinos ADC
 const int muxSeq[] = {5, 7, 6, 4, 3, 0, 1, 2}; // Sequência CD4051
 const int muxMask = 16;             // Pinos de controle do MUX (16,17,18)
+int buffer[16] = {0};             
 const int btnPin = 5;               // Botão
+pin32 pin32;                        
 
 // Constantes
 const int pwmFreq = 50000;
@@ -111,16 +114,12 @@ uint16_t handleColor(uint16_t sensorsRead) {
   return (0b11111111111111111) * (sensorsRead > 0b1111111111111111) ^ sensorsRead;
 }
 
-void sensor32() {
-  for(int i=0; i<8; i++) {
-    // Controla o MUX
-    digitalWrite(muxMask, (muxSeq[i] & 0b001));
-    digitalWrite(muxMask+1, (muxSeq[i] & 0b010));
-    digitalWrite(muxMask+2, (muxSeq[i] & 0b100));
-    
-    delayMicroseconds(10); // Tempo de estabilização
+void sensor32(int buffer[]){
+  for (int i = 0; i < 8; i++) {
+    pin32.low(0b111 << int(muxMask));
+    pin32.high(muxSeq[i] << muxMask);
     buffer[i] = analogRead(muxIn[0]);
-    buffer[i+8] = analogRead(muxIn[1]);
+    buffer[i + 8] = analogRead(muxIn[1]);
   }
 }
 
