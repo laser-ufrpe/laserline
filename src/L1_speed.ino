@@ -16,4 +16,4 @@ public:
         if (output > max) output = static_cast<int>(max);
         return output;
     }
-}; 
+};

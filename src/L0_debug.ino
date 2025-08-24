@@ -19,7 +19,16 @@ public:
     }
     return formatBin;
   }
-
+  template<typename T, size_t N>
+  String strArray(const arr<T, N>& arr) {
+    String msg = "[";
+    for (size_t i = 0; i < N; i++) {
+      msg += String(arr[i]);
+      if (i < N - 1) msg += ", ";
+    }
+    msg += "]";
+    return msg;
+  }
 //========================================================================
   void ble(str_t name) {    
     BLE.begin(name);

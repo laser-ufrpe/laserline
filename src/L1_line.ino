@@ -60,10 +60,8 @@ public:
         }
     }
 
-    void debugADC() {
-        for (int i = 0; i < pins.size(); i++) {
-            int val = analogRead(pins[i]);
-            Debug.blesend("Analog[" + String(pins[i]) + "] = " + String(val));
-        }
-    }
+  void debugADC() {
+    muxadc(); Debug.blesend("read: " + Debug.strArray(dataADC));
+    delay(1000);
+  }
 };
