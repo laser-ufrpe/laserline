@@ -11,11 +11,8 @@ public:
 
   int whiteValue;
 
-  gents_t LINE(Ts... pins)
-    : sensors(pins...) {}
-  gents_t void setWeights(Ts... values) {
-    weights = { values... };
-  }
+  gents_t LINE(Ts... pins) : sensors(pins...) {}
+  gents_t void setWeights(Ts... values) { weights = { values... }; }
   void muxadc() {
     sensors.muxadc();
     dataADC = sensors.muxbuf;
@@ -55,5 +52,4 @@ public:
     }
     dataEnd = bestMatch;
   }
-
 };
