@@ -1,10 +1,7 @@
 class DEBUG {
 public:
   vec<int> timers;
-  bool isConnected;
-  BluetoothSerial BLE;
-  
-  DEBUG() : timers(10), isConnected(false) {}
+  DEBUG() : timers(10) {}
 
 //========================================================================
   void timer(int timer)    { timers[timer] = micros(); }
@@ -29,20 +26,7 @@ public:
     msg += "]";
     return msg;
   }
-//========================================================================
-  void ble(str_t name) {    
-    BLE.begin(name);
-    delay(30000);
-    isConnected = BLE.hasClient();
-  }
-
-  void blesend(str_t msg) {
-    (isConnected) ? BLE.println(msg) : Serial.println("BLE Not Connected");
-  }
-
-  char bleread() {
-    return isConnected ? BLE.read() : '$';
-  }
+ 
 };
 
 DEBUG Debug;

@@ -53,15 +53,4 @@ public:
         dataEnd = bestMatch;
     }
 
-    void debugDig() {
-        for (int i = 0; i < pins.size(); i++) {
-            int val = digitalRead(pins[i]);
-            Debug.blesend("Digital[" + String(pins[i]) + "] = " + String(val));
-        }
-    }
-
-  void debugADC() {
-    muxadc(); Debug.blesend("read: " + Debug.strArray(dataADC));
-    delay(1000);
-  }
 };
