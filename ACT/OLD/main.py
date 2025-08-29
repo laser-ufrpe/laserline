@@ -88,6 +88,24 @@ def sensor32() -> object:
         buffer[ i+8 ] = muxIn[1].read()
     return buffer
 
+
+GPIO_IN_REG = 0x3FF4403C
+GPIO_IN1_REG = 0x3FF44040
+@micropython.viper
+def read_grouped_pins() -> int:
+    reg_low = mem32[0x3FF4403C]
+    reg_high = mem32[0x3FF44040]
+
+    result = (
+        ((reg_low & 0x6000) >> 13) |
+        ((reg_low & 0xF0000) >> 14) |
+        ((reg_low & 0xE00000) >> 15) |
+        ((reg_low & 0xE000000) >> 16) |
+        ((reg_high & 0b11) << 12)
+    )
+    return result
+
+
 @micropython.native
 def toDigital(sensorsADC):
   sum, bitCount = 0, 0
